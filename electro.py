@@ -66,7 +66,7 @@ kvar['Joint_per_person'] = joint_kv * tarif / humans_kv
 kvar['Joint_cost'] = joint_kv * tarif
 j_per_per = kvar['Joint_per_person']
 
-for num in range (len(k52[now]) - 2):
+for num in range (room_num):
     room = k52[now]['Room_' + str(num+1)]
     
     joint = j_per_per * room['Humans']
