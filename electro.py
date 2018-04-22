@@ -85,3 +85,6 @@ for num in range (room_num):
 time.sleep(1.4)
 input('Для завершения программы нажмите "Enter".')
 
+# Для самоконтроля вывожу словарь использованных данных:
+print()
+pprint.pprint(k52)
