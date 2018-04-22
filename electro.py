@@ -3,7 +3,7 @@ import time
 import pprint
 
 print('Запущена программа для рассчета оплаты потребленной электроэнергии в коммунальной квартире №52.')
-print('Версия: 0.01')
+print('Версия: 0.0.1')
 
 now = datetime.date.isoformat(datetime.date.today())
 print('Сегодня на календаре: ', now)
