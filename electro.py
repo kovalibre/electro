@@ -1,91 +1,89 @@
-import datetime
-import time
 import pprint
+import time
+import datetime
 
-print('Запущена программа для рассчета оплаты потребленной электроэнергии в коммунальной квартире №52.')
-print('Версия: 0.01')
+today = datetime.date.isoformat(datetime.date.today())
+TARIF = 'Тариф на электроэнергию'
+KVARTIRA = 'Квартира'
+ROOM_N = 'Комната_'
+METER = 'Показания счетчика'
+HUMANS = 'Количество проживающих'
+CONSUMPTION = 'Потребление энергии (кВт)'
+COMM_CONSUMPTION = 'Потребление в местах общего пользования (коммунальное)'
+COMM_COST = 'Общая стоимость коммунального потребления'
+COMM_PER_PERSON = 'Стоимость коммунального потребления с человека'
+ROOM_COST = 'Стоимость потребления в комнате'
+DEBT = 'Задолженность'
+TOTAL = 'ИТОГО'
 
-now = datetime.date.isoformat(datetime.date.today())
-print('Сегодня на календаре: ', now)
+# переменная-заглушка, в качестве временного решения, как точка отсчета
+# вместо прошлых показаний каких-либо счетчиков или других данных:
+temporary_value = 0
+
+# создаем словарь, в будущих версиях он будет не создаваться, а подгружаться
+# и содержать в себе данные прошлых подсчетов
+electro_database = {}
+electro_database[today] = {}
+electro_database[today][KVARTIRA] = {}
+electro_database[today][TARIF] = {}
+
+kvartira = electro_database[today][KVARTIRA]
+tarif = electro_database[today][TARIF]
+
+print('Запущена программа для рассчета оплаты потребленной электроэнергии в\
+ коммунальной квартире №52.')
+print('Версия: 0.0.3')
+print('Сегодня на календаре: ', today)
 print()
-
-# тут должна подгружаться база предыдущих запусков программы,
-# но я еще не знаю, как работать с внешними файлами
-k52 = {}
-# временное значение для данных:
-temp = 0
-
 tarif = float(input('Текущий тариф (в руб.): '))
-k52[now] = {'Tarif': tarif}
 print()
-
 room_num = int(input('Укажите количество комнат в квартире: '))
 print()
-
-watt_kv = int(input('Введите показания общего счетчика: '))
+kvartira[METER] = int(input('Введите показания общего счетчика: '))
 print()
 
-k52[now]['Kvartira'] = {}
-kvar = k52[now]['Kvartira']
-kvar['Meter'] = watt_kv
-cons_kv = watt_kv - temp
-kvar['Consumption'] = cons_kv
+kvartira[CONSUMPTION] = kvartira[METER] - temporary_value
+kvartira[COMM_CONSUMPTION] = kvartira[CONSUMPTION]
+kvartira[HUMANS] = 0
 
-joint_kv = cons_kv
-humans_kv = 0
 for num in range (room_num):
-    k52[now]['Room_' + str(num+1)] = {}
-    room = k52[now]['Room_' + str(num+1)]
-    
+    electro_database[today][ROOM_N + str(num+1)] = {}
+    room = electro_database[today][ROOM_N + str(num+1)]
+
     print('Введите показания счетчика комнаты номер', num+1, end=': ')
-    watt = int(input())
-    room['Meter'] = watt
-    
-    cons = watt - temp
-    room['Consumption'] = cons
-    
-    personal = cons * tarif
-    room['Personal_cost'] = personal
-    
-    humans = int(input('Количество проживающих в комнате: '))
-    room['Humans'] = humans
-    
-    humans_kv += humans
-    kvar['Humans'] = humans_kv
-    
-    debt = float(input('Задолженность за прошедший период (руб.): '))
-    room['Debt'] = debt
-    
-    joint_kv -= watt
-    kvar['Joint'] = joint_kv
+    room[METER] = int(input())
+    room[HUMANS] = int(input('Количество проживающих в комнате: '))
+    room[DEBT] = float(input('Задолженность за прошедший период (руб.): '))
+    room[CONSUMPTION] = room[METER] - temporary_value
+    room[ROOM_COST] = room[CONSUMPTION] * tarif
+    kvartira[HUMANS] += room[HUMANS]
+    kvartira[COMM_CONSUMPTION] -= room[METER]
     print()
 
 input('Чтобы получить результат вычислений, нажмите "Enter". ')
 print()
 
-kvar['Joint_per_person'] = joint_kv * tarif / humans_kv
-kvar['Joint_cost'] = joint_kv * tarif
-j_per_per = kvar['Joint_per_person']
+kvartira[COMM_COST] = kvartira[COMM_CONSUMPTION] * tarif
+kvartira[COMM_PER_PERSON] = kvartira[COMM_CONSUMPTION] * tarif / kvartira[HUMANS]
 
 for num in range (room_num):
-    room = k52[now]['Room_' + str(num+1)]
+    room = electro_database[today][ROOM_N + str(num+1)]
     
-    joint = j_per_per * room['Humans']
-    room['Joint_cost'] = joint
-    
-    room['Total'] = joint + room['Personal_cost'] + room['Debt']
+    room[COMM_COST] = kvartira[COMM_PER_PERSON] * room[HUMANS]
+    room[TOTAL] = room[COMM_COST] + room[ROOM_COST] + room[DEBT]
     
     print ('Комната номер', num+1, ':')
-    print ('Индивидуальное потребление: ', '%.2f' % room['Personal_cost'], 'руб.')
-    print ('За коммунальное: ', '%.2f' % room['Joint_cost'], 'руб.')
-    if room['Debt'] > 0:
-        print ('Задолженность: ', '%.2f' % room['Debt'], 'руб.')
-    print ('ИТОГО: ', '%.2f' % room['Total'], 'руб.')
+    print ('Индивидуальное потребление: ', '%.2f' % room[ROOM_COST], 'руб.')
+    print ('За коммунальное: ', '%.2f' % room[COMM_COST], 'руб.')
+    if room[DEBT] > 0:
+        print ('Задолженность: ', '%.2f' % room[DEBT], 'руб.')
+    print ('ИТОГО: ', '%.2f' % room[TOTAL], 'руб.')
     print()
 
-time.sleep(1.4)
+time.sleep(1)
 input('Для завершения программы нажмите "Enter".')
 
 # Для самоконтроля вывожу словарь использованных данных:
 print()
-pprint.pprint(k52)
+pprint.pprint(electro_database)
+input()
