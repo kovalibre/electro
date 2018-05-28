@@ -58,9 +58,7 @@ def digit_data_input(string_for_check):
     # Возвращает целое число.
     digit_value = input(string_for_check)
     while not digit_value.isdigit():
-        print()
-        print('ВВЕДИТЕ КОРРЕКТНОЕ ЗНАЧЕНИЕ!')
-        print()
+        print('\n ВВЕДИТЕ КОРРЕКТНОЕ ЗНАЧЕНИЕ! \n')
         digit_value = input(string_for_check)
     return int(digit_value)
 
@@ -74,20 +72,16 @@ def float_data_input(string_for_check):
             float(float_value)
             break
         except ValueError:
-            print()
-            print('ВВЕДИТЕ КОРРЕКТНОЕ ЗНАЧЕНИЕ!')
-            print()
+            print('\n ВВЕДИТЕ КОРРЕКТНОЕ ЗНАЧЕНИЕ! \n')
             float_value = input(string_for_check)
     return float(float_value)
 
 
 def print_greetings(version, date):
     # Выводит на экран приветствие, номер версии и текущую дату.
-    print()
-    print('Рассчет оплаты электроэнергии в коммунальной квартире.')
+    print('\nРассчет оплаты электроэнергии в коммунальной квартире.')
     print('Версия: ', version)
-    print('Сегодня на календаре: ', date)
-    print()
+    print('Сегодня на календаре: ', date, '\n')
 
 
 def recieve_recent_data(db):
@@ -116,24 +110,21 @@ def input_data(recent_rooms, int_reader, float_reader):
     # Блок ввода даннх от пользователя и создание объекта с текущей 
     # информацией по квартире.
     tariff = float_reader('Текущий тариф (в руб.): ')
-    print()
-    apartment = Apartment(meter=int_reader('Показания общего счетчика: '))
-    print()
+    apartment = Apartment(meter=int_reader('\nПоказания общего счетчика: '))
     if  bool(recent_rooms) == False:
         # Если не были получены значения из базы данных, создаем 
         # объекты класса Room в необходимом количестве с нулевыми 
         # показаниями счетчика и заносим их в список "прошлых" комнат.
-        num_of_rooms = int_reader('Укажите количество комнат в квартире: ')
+        num_of_rooms = int_reader('\nУкажите количество комнат в квартире: ')
         for num in range (num_of_rooms):
             room = Room()
             recent_rooms.append(room)
-        print()
     else:
         num_of_rooms = len(recent_rooms)
     # Занесим данные в объекты комнат и составляем список из них.
     rooms = []
     for num in range(num_of_rooms):
-        room = Room(meter=int_reader('Показания счетчика комнаты номер '
+        room = Room(meter=int_reader('\nПоказания счетчика комнаты номер '
                                       + str(num + 1) + ': '),
                     humans=int_reader('Количество проживающих в комнате: '),
                     debt=float_reader('Долг за прошедший период (руб.): '))
@@ -156,12 +147,11 @@ def print_account(room_id, room_cost, communal_cost, debt, total):
 def run_calculations(tariff, rooms, recent_rooms, communal_per_person):
     # Выводит на экран инструкцию для пользователя, и, в зависимости от
     # полученной команды, вызывает соответствующую функцию.
-    instruction = (' Чтобы получить рассчет по комнате, введите ее номер.\n'+
+    instruction = ('\n Чтобы получить рассчет по комнате, введите ее номер.\n'+
                    ' "all" - чтобы получить рассчет по всем комнатам.\n'+
                    ' "exit" - завершить работу.\n'+
                    ' №: ')
-    print()
-    command = str(input(instruction))
+    command = input(instruction)
     print()
     while command != 'exit':
         # Пока не введена команда выхода из программы, выполняется цикл:
@@ -180,8 +170,7 @@ def run_calculations(tariff, rooms, recent_rooms, communal_per_person):
                 print_account(r+1, room_cost, communal_cost, debt, total)
                 print()
                 r+=1
-            print()
-            command = str(input(instruction))
+            command = input(instruction)
             print()
         else:
             while True: 
@@ -201,20 +190,19 @@ def run_calculations(tariff, rooms, recent_rooms, communal_per_person):
                                       room_cost, 
                                       communal_cost, 
                                       debt, total)
+                        command = input(instruction)
                         print()
-                        command = str(input(instruction))
+                        break
+                    else:
+                        # сообщение об ошибке в прочих случаях.
+                        print('\n ВВЕДИТЕ КОРРЕКТНУЮ КОММАНДУ! \n')
+                        command = input(instruction)
                         print()
-                    break
+                        break
                 except ValueError:
                     # сообщение об ошибке в прочих случаях.
-                    """------------------------------------------------
-                    ...Тут что-то поломалось, надо позже разобраться...
-                    ------------------------------------------------"""
-                    print()
-                    print('ВВЕДИТЕ КОРРЕКТНУЮ КОММАНДУ!')
-                    print()
-                    print()
-                    command = str(input(instruction))
+                    print('\n ВВЕДИТЕ КОРРЕКТНУЮ КОММАНДУ! \n')
+                    command = input(instruction)
                     print()
                     break
 
@@ -272,7 +260,7 @@ def save_to_db(db, apartment, rooms):
 
 
 def main():
-    version = '0.2.2'
+    version = '0.1.3'
     today = datetime.date.isoformat(datetime.date.today())
     db = 'database.txt'
     log = 'logfile.txt'
