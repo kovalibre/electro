@@ -1,10 +1,30 @@
 import pytest
 import datetime
 import pprint
-from electro import RecentData, GeneralData, RoomsData, AllNewData
-from electro import ROOM_N, METER, HUMANS, DEBT, COMMUNAL_COST, ROOM_COST
+from electro import (Apartment, Room, 
+                    digit_data_input, float_data_input,
+                    print_greetings,
+                    recieve_recent_data,
+                    input_data,
+                    print_account,
+                    run_calculations,
+                    save_to_log, save_to_db)
 
+def test_run_calculations():
+    tariff = 2
+    room1 = Room(meter=100, humans=1)
+    room2 = Room(meter=150, humans=2)
+    rooms = [room1, room2]
+    recent1 = Room()
+    recent2 = Room()
+    recent_rooms = [recent1, recent2]
+    communal_per_person = 25.0
 
+    run_calculations(tariff, rooms, recent_rooms, communal_per_person)
+    
+     
+
+"""
 def test_electro():
     today = datetime.date.isoformat(datetime.date.today())
     recent = RecentData('')
@@ -41,3 +61,4 @@ def test_electro():
 
     assert 500 == new_data.data[ROOM_N + '1'][COMMUNAL_COST]
     assert 500 == new_data.data[ROOM_N + '1'][ROOM_COST]
+"""
