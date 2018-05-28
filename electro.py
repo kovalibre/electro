@@ -1,256 +1,59 @@
 import pprint
 import datetime
 
-DATE = 'Дата'
-ROOM_NUM = 'Количество комнат'
-TARIFF = 'Тариф на электроэнергию'
-APARTMENT = 'Квартира'
-ROOM_N = 'Комната №_'
-METER = 'Показания счетчика'
-HUMANS = 'Количество проживающих'
-CONSUMPTION = 'Потребление энергии (кВт)'
-COMMUNAL_COST = 'Стоимость коммунального потребления'
-COMM_PER_PERSON = 'Стоимость коммунального потребления с человека'
-ROOM_COST = 'Стоимость потребления в комнате'
-DEBT = 'Задолженность'
-TOTAL = 'ИТОГО'
-INSTRUCTION = ' Чтобы получить рассчет по комнате, введите ее номер.\n \
-"all" - чтобы получить рассчет по всем комнатам.\n \
-"exit" - завершить работу.\n \
- №: '
-
-
-def input_general(recent_number_of_rooms, int_reader, float_reader):
-    # Вводим значения общих данных по квартире.
-    tariff = float_reader('Текущий тариф (в руб.): ')
-    print()
-    if recent_number_of_rooms == 0:
-        # При первом запуске указываем количество комнат.
-        number_of_rooms = int_reader(
-            'Укажите количество комнат в квартире: ')
-        print()
-    else:
-        number_of_rooms = recent_number_of_rooms
-    meter = int_reader('Введите показания общего счетчика: ')
-    print()
-
-    return [tariff, number_of_rooms, meter]
-
-
-def input_rooms(number_of_rooms, int_reader, float_reader,
-                room_n=ROOM_N, meter=METER, humans=HUMANS, debt=DEBT):
-    # Вводим значения данных по каждой комнате и заносим их в словарь.
-    rooms = {}
-    for num in range(number_of_rooms):
-        rooms[room_n + str(num + 1)] = {}
-        room = rooms[room_n + str(num + 1)]
-
-        room[meter] = int_reader('Введите показания счетчика комнаты номер '
-                                 + str(num + 1) + ': ')
-        room[humans] = int_reader('Количество проживающих в комнате: ')
-        room[debt] = float_reader('Долг за прошедший период (руб.): ')
-    print()
-    return rooms
-
-
-class RecentData:
-    """Класс, содержащий в качестве атрибутов значения данных прошлых 
-    запусков программы."""
-
+class Apartment():
+    # Класс, отвечающий за хранение и вычисление данных по квартире.
     def __init__(self,
-                 database: str,
-                 rooms: dict = None,
-                 meter: int = 0,
-                 number_of_rooms: int = 0) -> None:
-        self.database = database
+                 meter=0):
         self.meter = meter
-        self.number_of_rooms = number_of_rooms
-        self.rooms = rooms
+        
+    def consumption(self, recent_apartment_meter):
+        # Рассчет общего энергопотребления во всей квартире.
+        return self.meter - recent_apartment_meter
 
-    def recieve(self, apartment: str = APARTMENT,
-                meter: str = METER,
-                room_num: str = ROOM_NUM) -> None:
-        # Читает из базы данных словарь за последний запуск программы,
-        # задает атрибутам значения из него. Если базы нет, 
-        # оставляет нулевые значения.
-        try:
-            with open(self.database) as database:
-                recent = []
-                for line in database:
-                    recent.append(eval(line))
-            last_line = recent[-1]
-            print()
-            # временная строка для самоконтроля:
-            pprint.pprint(last_line)
-            print()
-            print()
-            self.meter = last_line[apartment][meter]
-            self.number_of_rooms = last_line[apartment][room_num]
-            self.rooms = last_line
-        except FileNotFoundError:
-            pass
+    def communal_per_person(self, tariff, recent_apartment_meter, 
+                            rooms, recent_rooms):
+        # Рассчет стоимости энергии, потребленной в местах 
+        # общего пользования, на каждого из жильцов.
+        humans = 0
+        rooms_consumption = 0
+        r = 0
+        for room in rooms:
+            humans += room.humans
+            recent_room = recent_rooms[r]
+            rooms_consumption += room.consumption(recent_room.meter)
+            r+=1
+        return (self.meter - recent_apartment_meter - 
+                rooms_consumption) * tariff / humans
 
 
-class GeneralData:
-    """Класс, содержащий в качестве атрибутов общие данниые по квартире,
-    необходимые для рассчетов."""
-
+class Room():
+  # Класс, отвечающий за хранение и вычисление данных по конкретной комнате.
     def __init__(self,
-                 meter: int = None,
-                 number_of_rooms: int = None,
-                 tariff: float = None,
-                 consumption: int = None,
-                 communal_per_person: int = None) -> None:
+                 meter=0,
+                 humans=0,
+                 debt=0):
         self.meter = meter
-        self.number_of_rooms = number_of_rooms
-        self.tariff = tariff
-        self.consumption = consumption
-        self.communal_per_person = communal_per_person
+        self.humans = humans
+        self.debt = debt
+    
+    def consumption(self, recent_room_meter):
+        # Рассчет энергопотребления внутри комнаты.
+        return self.meter - recent_room_meter
 
-    def calculate_consumption(self, recent_meter: int) -> None:
-        # Рассчитываем общее потребление электроэнергии в квартире.
-        self.consumption = self.meter - recent_meter
-
-    def calculate_communal_per_person(self, rooms: dict,
-                                      room_n: str = ROOM_N,
-                                      consumption: str = CONSUMPTION,
-                                      humans: str = HUMANS) -> None:
-        # Рассчитываем затраты на коммунальное потребление 
-        # с каждого проживающего.
-        persons = 0
-        communal_consumption = self.consumption
-        for num in range(self.number_of_rooms):
-            room = rooms[room_n + str(num + 1)]
-            persons += room[humans]
-            communal_consumption -= room[consumption]
-        self.communal_per_person = (self.tariff *
-                                    communal_consumption) / persons
+    def account(self, tariff, recent_room_meter, communal_per_person):
+        # Вычисление счета по комнате, в трех пунктах: 
+        # - Стоимость энергопотребления внутри комнаты, 
+        # - Стоимость коммунальной энергии, исходя из числа жильцов,
+        # - Долг. 
+        # А также итоговая сумма этих величин.
+        room_cost = tariff * (self.meter - recent_room_meter)
+        communal_cost = communal_per_person * self.humans
+        total = room_cost + communal_cost + self.debt
+        return (room_cost, communal_cost, self.debt, total)
 
 
-class RoomsData:
-    """Класс, содержащий в качестве атрибута 
-    словари данных по каждой комнате."""
-
-    def __init__(self, rooms: dict = None) -> None:
-        self.rooms = rooms
-
-    def calculate_consumption(self, number_of_rooms: int,
-                              recent_number_of_rooms: int,
-                              recent_rooms: dict,
-                              room_n: str = ROOM_N,
-                              meter: str = METER,
-                              consumption: str = CONSUMPTION) -> None:
-        # Рассчитываем потребление энергии в каждой комнате.
-        if recent_number_of_rooms == 0:
-            for num in range(number_of_rooms):
-                room = self.rooms[room_n + str(num + 1)]
-                room[consumption] = room[meter]
-        else:
-            for num in range(number_of_rooms):
-                room = self.rooms[room_n + str(num + 1)]
-                room[consumption] = (room[meter] -
-                                     recent_rooms[room_n + str(num + 1)][
-                                         meter])
-
-    def calculate_accounts(self, number_of_rooms: int,
-                           tariff: float,
-                           communal_per_person: float,
-                           room_n: str = ROOM_N,
-                           consumption: str = CONSUMPTION,
-                           room_cost: str = ROOM_COST,
-                           communal_cost: str = COMMUNAL_COST,
-                           humans: str = HUMANS,
-                           debt: str = DEBT,
-                           total: str = TOTAL) -> None:
-        # Рассчитываем стоимость потребления электроэнергии в каждой комнате,
-        # затраты на коммунальный расход, исходя из числа проживающих в ней 
-        # человек, а также итоговую сумму счета по комнате.
-        for num in range(number_of_rooms):
-            room = self.rooms[room_n + str(num + 1)]
-            room[room_cost] = room[consumption] * tariff
-            room[communal_cost] = communal_per_person * room[humans]
-            room[total] = room[communal_cost] + room[room_cost] + room[debt]
-
-
-class AllNewData:
-    """Класс, собирающий в себя все новые данные, чтобы выводить их
-    пользователю и сохранять в базе данных."""
-
-    def __init__(self, data: dict = None) -> None:
-        self.data = data
-
-    def collect(self, today: str,
-                number_of_rooms: int,
-                general_meter: int,
-                tariff: float,
-                general_consumption: int,
-                communal_per_person: int,
-                rooms: dict,
-                date: str = DATE,
-                room_num: str = ROOM_NUM,
-                trff: str = TARIFF,
-                apartment: str = APARTMENT,
-                meter: str = METER,
-                consumption: str = CONSUMPTION,
-                comm_per_person: str = COMM_PER_PERSON) -> None:
-        gen_data = {}
-        gen_data[date] = today
-        gen_data[meter] = general_meter
-        gen_data[trff] = tariff
-        gen_data[room_num] = number_of_rooms
-        gen_data[consumption] = general_consumption
-        gen_data[comm_per_person] = communal_per_person
-        self.data = {}
-        self.data[apartment] = gen_data
-        self.data.update(rooms)
-
-    def output_all(self, number_of_rooms: int,
-                   room_n: str = ROOM_N,
-                   room_cost: str = ROOM_COST,
-                   communal_cost: str = COMMUNAL_COST,
-                   debt: str = DEBT,
-                   total: str = TOTAL) -> None:
-        # Выводит на экран счета для всех комнат.
-        for num in range(number_of_rooms):
-            room = self.data[room_n + str(num + 1)]
-
-            print('Комната номер', num + 1, ':')
-            print('Индивидуальное потребление: ', '%.2f' % room[room_cost],
-                  'руб.')
-            print('За коммунальное: ', '%.2f' % room[communal_cost], 'руб.')
-            if room[debt] > 0:
-                print('Задолженность: ', '%.2f' % room[debt], 'руб.')
-            print('ИТОГО: ', '%.2f' % room[total], 'руб.')
-            print()
-
-    def output_room(self, room_id: int,
-                    room_n: str = ROOM_N,
-                    room_cost: str = ROOM_COST,
-                    communal_cost: str = COMMUNAL_COST,
-                    debt: str = DEBT,
-                    total: str = TOTAL) -> None:
-        # Выводит на экран счет для указанной комнаты.
-        room = self.data[room_n + str(room_id)]
-
-        print('Комната номер', room_id, ':')
-        print('Индивидуальное потребление: ', '%.2f' % room[room_cost], 'руб.')
-        print('За коммунальное: ', '%.2f' % room[communal_cost], 'руб.')
-        if room[debt] > 0:
-            print('Задолженность: ', '%.2f' % room[debt], 'руб.')
-        print('ИТОГО: ', '%.2f' % room[total], 'руб.')
-        print()
-
-    def add_to_db(self, datafile: str) -> None:
-        # Вносит данные в файл базы или создает новый.
-        try:
-            with open(datafile, 'a') as database:
-                print(self.data, file=database)
-        except FileNotFoundError:
-            with open(datafile, 'x') as database:
-                print(self.data, file=database)
-
-
-def digit_data_input(string_for_check: str) -> int:
+def digit_data_input(string_for_check):
     # Цикл проверки строки ввода для целочисленных значений.
     # Возвращает целое число.
     digit_value = input(string_for_check)
@@ -262,7 +65,7 @@ def digit_data_input(string_for_check: str) -> int:
     return int(digit_value)
 
 
-def float_data_input(string_for_check: str) -> float:
+def float_data_input(string_for_check):
     # Цикл проверки строки ввода для float-значений.
     # Возвращает float.
     float_value = input(string_for_check)
@@ -278,7 +81,7 @@ def float_data_input(string_for_check: str) -> float:
     return float(float_value)
 
 
-def print_greetings(version: str, date: str) -> None:
+def print_greetings(version, date):
     # Выводит на экран приветствие, номер версии и текущую дату.
     print()
     print('Рассчет оплаты электроэнергии в коммунальной квартире.')
@@ -287,12 +90,76 @@ def print_greetings(version: str, date: str) -> None:
     print()
 
 
-def print_results_by_user_command(number_of_rooms: int,
-                                  new_data: AllNewData,
-                                  instruction: str = INSTRUCTION,
-                                  ):
+def recieve_recent_data(db):
+    # В зависимости от наличия файла базы данных, создает объект 
+    # класса Apartment с предыдущим значением счетчика или с нулевым 
+    # значением. А также список объектов класса Room с прошлыми показаниями 
+    # или же пустой список.
+    try:
+        with open(db) as db:
+            data = []
+            for line in db:
+                data.append(eval(line))
+        last_data = data[-1]
+        recent_apartment = Apartment(meter=last_data['apartment'])
+        recent_rooms = []
+        for room_meter in last_data['rooms']:
+            room = Room(meter=room_meter)
+            recent_rooms.append(room)        
+    except FileNotFoundError:
+        recent_apartment = Apartment()
+        recent_rooms = []
+    return (recent_apartment, recent_rooms)
+
+
+def input_data(recent_rooms, int_reader, float_reader):
+    # Блок ввода даннх от пользователя и создание объекта с текущей 
+    # информацией по квартире.
+    tariff = float_reader('Текущий тариф (в руб.): ')
+    print()
+    apartment = Apartment(meter=int_reader('Показания общего счетчика: '))
+    print()
+    if  bool(recent_rooms) == False:
+        # Если не были получены значения из базы данных, создаем 
+        # объекты класса Room в необходимом количестве с нулевыми 
+        # показаниями счетчика и заносим их в список "прошлых" комнат.
+        num_of_rooms = int_reader('Укажите количество комнат в квартире: ')
+        for num in range (num_of_rooms):
+            room = Room()
+            recent_rooms.append(room)
+        print()
+    else:
+        num_of_rooms = len(recent_rooms)
+    # Занесим данные в объекты комнат и составляем список из них.
+    rooms = []
+    for num in range(num_of_rooms):
+        room = Room(meter=int_reader('Показания счетчика комнаты номер '
+                                      + str(num + 1) + ': '),
+                    humans=int_reader('Количество проживающих в комнате: '),
+                    debt=float_reader('Долг за прошедший период (руб.): '))
+        rooms.append(room)
+        print()
+    return (tariff, apartment, rooms)
+
+
+def print_account(room_id, room_cost, communal_cost, debt, total):
+    # Вывод на экран детального счета по комнате.
+    print('Комната номер', room_id, ':')
+    print('Индивидуальное потребление: ', '%.2f' % room_cost, 'руб.')
+    print('За коммунальное: ', '%.2f' % communal_cost, 'руб.')
+    if debt > 0:
+        print('Задолженность: ', '%.2f' % debt, 'руб.')
+    print('ИТОГО: ', '%.2f' % total, 'руб.')
+    print()
+    
+
+def run_calculations(tariff, rooms, recent_rooms, communal_per_person):
     # Выводит на экран инструкцию для пользователя, и, в зависимости от
     # полученной команды, вызывает соответствующую функцию.
+    instruction = (' Чтобы получить рассчет по комнате, введите ее номер.\n'+
+                   ' "all" - чтобы получить рассчет по всем комнатам.\n'+
+                   ' "exit" - завершить работу.\n'+
+                   ' №: ')
     print()
     command = str(input(instruction))
     print()
@@ -300,74 +167,134 @@ def print_results_by_user_command(number_of_rooms: int,
         # Пока не введена команда выхода из программы, выполняется цикл:
         if command == 'all':
             # получение счета для всех комнат,
-            new_data.output_all(number_of_rooms)
+            r=0
+            for room in rooms:
+                recent_room = recent_rooms[r]
+
+                (room_cost, 
+                 communal_cost, 
+                 debt, total) = room.account(tariff, 
+                                             recent_room.meter, 
+                                             communal_per_person)
+                                             
+                print_account(r+1, room_cost, communal_cost, debt, total)
+                print()
+                r+=1
             print()
             command = str(input(instruction))
             print()
         else:
-            while True:
-                try:
-                    if 0 < int(command) <= number_of_rooms:
+            while True: 
+                try: 
+                    if 0 < int(command) <= len(rooms):
                         # получение счета по номеру комнаты,
                         print()
-                        new_data.output_room(command)
+                        room = rooms[int(command) - 1]
+                        recent_room = recent_rooms[int(command) - 1]
+
+                        (room_cost, 
+                         communal_cost, 
+                         debt, total) = room.account(tariff, 
+                                                     recent_room.meter, 
+                                                     communal_per_person)
+                        print_account(command, 
+                                      room_cost, 
+                                      communal_cost, 
+                                      debt, total)
                         print()
                         command = str(input(instruction))
                         print()
                     break
                 except ValueError:
                     # сообщение об ошибке в прочих случаях.
+                    """------------------------------------------------
+                    ...Тут что-то поломалось, надо позже разобраться...
+                    ------------------------------------------------"""
                     print()
                     print('ВВЕДИТЕ КОРРЕКТНУЮ КОММАНДУ!')
                     print()
                     print()
                     command = str(input(instruction))
                     print()
+                    break
+
+
+def save_to_log(log, today, tariff, apartment, rooms, recent_apartment,
+                recent_rooms, communal_per_person):
+    # Сохранение детальных данных в лог-файл в читабельном 
+    # для пользователя виде.
+    data = {}
+    data['General'] = {}
+    data['General']['Date'] = today
+    data['General']['Tariff'] = tariff
+    data['Apartment'] = {}
+    data['Apartment']['Meter'] = apartment.meter
+    data['Apartment']['Consumption'] = apartment.consumption(
+                                                    recent_apartment.meter)
+    data['Apartment']['Cost of communal consumption per person'] = (
+                                                        communal_per_person)
+    r=0
+    for room in rooms:
+        recent_room = recent_rooms[r]
+        (room_cost, communal_cost, debt, total) = room.account(
+                            tariff, recent_room.meter, communal_per_person)
+        data['Room №_' + str(r+1)] = {}
+        room_data = data['Room №_' + str(r+1)]
+        room_data['Humans'] = room.humans
+        room_data['Cost of consumption in the room'] = room_cost
+        room_data['Cost of communal consumption in the room'] = communal_cost
+        room_data['Debt'] = debt
+        room_data['Total'] = total
+        r+=1   
+    try:
+        with open(log, 'a') as log:
+            print(data, file=log)
+    except FileNotFoundError:
+        with open(log, 'x') as log:
+            print(data, file=log)
+
+
+def save_to_db(db, apartment, rooms):
+    # Сохранение показаний счетчиков в файл базы данных
+    # с целью последующего чтения в данной программе.
+    data = {}
+    data['apartment'] = apartment.meter
+    data['rooms'] = []
+    rooms_data = data['rooms']
+    for room in rooms:
+        rooms_data.append(room.meter)
+    try:
+        with open(db, 'a') as db:
+            print(data, file=db)
+    except FileNotFoundError:
+        with open(db, 'x') as db:
+            print(data, file=db)
 
 
 def main():
-    version = '0.1.4'
+    version = '0.2.2'
     today = datetime.date.isoformat(datetime.date.today())
-    datafile = 'database.txt'
+    db = 'database.txt'
+    log = 'logfile.txt'
     int_reader = lambda x: digit_data_input(x)
     float_reader = lambda x: float_data_input(x)
-    recent = RecentData(datafile)
-    new_data = AllNewData()
 
     print_greetings(version, today)
-    recent.recieve()
 
-    (tariff, number_of_rooms, meter) = input_general(recent.number_of_rooms,
-                  int_reader,
-                  float_reader)
-    general = GeneralData(meter, number_of_rooms, tariff)
+    (recent_apartment, recent_rooms) = recieve_recent_data(db)
 
-    number_of_rooms = general.number_of_rooms
+    (tariff, apartment, rooms) = input_data(recent_rooms, int_reader, 
+                                 float_reader)
 
-    room_data = input_rooms(number_of_rooms,
-                int_reader,
-                float_reader)
+    communal_per_person = apartment.communal_per_person(tariff, 
+                          recent_apartment.meter, rooms, recent_rooms)
 
-    rooms = RoomsData(room_data)
-    general.calculate_consumption(recent.meter)
-    rooms.calculate_consumption(number_of_rooms,
-                                recent.number_of_rooms,
-                                recent.rooms)
-    general.calculate_communal_per_person(rooms.rooms)
-    rooms.calculate_accounts(number_of_rooms,
-                             general.tariff,
-                             general.communal_per_person)
-    new_data.collect(today,
-                     number_of_rooms,
-                     general.meter,
-                     general.tariff,
-                     general.consumption,
-                     general.communal_per_person,
-                     rooms.rooms)
-    print_results_by_user_command(number_of_rooms,
-                                  new_data)
+    run_calculations(tariff, rooms, recent_rooms, communal_per_person)
 
-    new_data.add_to_db(datafile)
+    save_to_log(log, today, tariff, apartment, rooms, recent_apartment,
+                recent_rooms, communal_per_person)
+    
+    save_to_db(db, apartment, rooms)
 
 
 if __name__ == '__main__':
